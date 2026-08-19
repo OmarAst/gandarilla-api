@@ -1,0 +1,68 @@
+@baseUrl = http://localhost:4000
+@token = cambia-este-token
+@movementId = 1
+
+### Salud
+GET {{baseUrl}}/api/health
+
+### Registrar movimiento de pago
+POST {{baseUrl}}/api/payment-movements
+Authorization: Bearer {{token}}
+Content-Type: application/json
+X-Correlation-ID: test-payment-create-001
+
+{
+  "casa": 42,
+  "monto": 900.00,
+  "observaciones": "Pago correspondiente a julio",
+  "formaPago": 1,
+  "fechaPago": "2026-07-07",
+  "mes": 7,
+  "anio": 2026
+}
+
+### Registrar el mismo pago para varias casas
+POST {{baseUrl}}/api/payment-movements/batch
+Authorization: Bearer {{token}}
+Content-Type: application/json
+X-Correlation-ID: test-payment-batch-001
+
+{
+  "casas": [1, 2, 3, 4, 6, 9, 16, 19],
+  "monto": 800.00,
+  "observaciones": "Pago correspondiente a agosto",
+  "formaPago": 1,
+  "fechaPago": "2026-08-04",
+  "mes": 8,
+  "anio": 2026
+}
+
+### Consultar movimiento
+GET {{baseUrl}}/api/payment-movements/{{movementId}}
+Authorization: Bearer {{token}}
+
+### Generar y enviar recibo por movimiento (200 OK)
+POST {{baseUrl}}/api/payment-movements/{{movementId}}/send-receipt
+Authorization: Bearer {{token}}
+X-Correlation-ID: test-receipt-send-001
+
+### Generar todos los recibos del mes sin enviar WhatsApp
+POST {{baseUrl}}/api/receipts/generate-monthly
+Authorization: Bearer {{token}}
+Content-Type: application/json
+X-Correlation-ID: test-monthly-receipts-001
+
+{
+  "mes": 8,
+  "anio": 2026
+}
+
+### Compatibilidad: enviar por casa y mes del año actual
+POST {{baseUrl}}/api/receipts/send
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "casa": 42,
+  "mes": 7
+}

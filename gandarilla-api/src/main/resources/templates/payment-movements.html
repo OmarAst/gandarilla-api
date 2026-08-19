@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Movimientos | Río Gandarilla</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+    <script defer th:src="@{/js/movements.js}"></script>
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" th:href="@{/web/dashboard}">
+        <img th:src="@{/img/logo.png}" alt="Río Gandarilla">
+        <span><strong>Río Gandarilla</strong><small>Administración de pagos</small></span>
+    </a>
+    <nav>
+        <a th:href="@{/web/dashboard}">Dashboard</a>
+        <a class="active" th:href="@{/web/payment-movements}">Movimientos</a>
+        <a th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
+    </nav>
+</header>
+
+<main class="page">
+    <section class="page-heading simple">
+        <div><p class="eyebrow">Captura de pagos</p><h1>Movimientos de mantenimiento</h1>
+            <p>Registra un pago individual o aplica los mismos datos a varias casas.</p></div>
+    </section>
+
+    <div th:if="${success}" class="alert success" th:text="${success}"></div>
+    <div th:if="${error}" class="alert error" th:text="${error}"></div>
+
+    <section class="content-grid forms-layout">
+        <article class="panel wide">
+            <div class="tabs" role="tablist">
+                <button class="tab active" type="button" data-tab="single">Pago individual</button>
+                <button class="tab" type="button" data-tab="batch">Pago masivo</button>
+            </div>
+
+            <form id="single" class="payment-form tab-content active" method="post" th:action="@{/web/payment-movements/single}">
+                <div class="form-grid">
+                    <label>Casa<select name="casa" required><option value="">Selecciona una casa</option>
+                        <option th:each="resident : ${residents}" th:value="${resident.numCasa}"
+                                th:text="|Casa ${resident.numCasa} — ${resident.nombre}|"></option></select></label>
+                    <label>Monto<input name="monto" type="number" min="0.01" step="0.01" value="800.00" required></label>
+                    <label>Forma de pago<select name="formaPago" required><option value="1">Transferencia</option><option value="2">Depósito</option><option value="3">Efectivo</option><option value="4">Otro</option></select></label>
+                    <label>Fecha de pago<input name="fechaPago" type="date" th:value="${today}" required></label>
+                    <label>Mes<input name="mes" type="number" min="1" max="12" th:value="${currentMonth}" required></label>
+                    <label>Año<input name="anio" type="number" min="2020" max="2100" th:value="${currentYear}" required></label>
+                    <label class="span-2">Observaciones<textarea name="observaciones" maxlength="500" rows="3" placeholder="Descripción opcional del pago"></textarea></label>
+                </div>
+                <button class="button primary" type="submit">Registrar movimiento</button>
+            </form>
+
+            <form id="batch" class="payment-form tab-content" method="post" th:action="@{/web/payment-movements/batch}">
+                <div class="selector-heading"><div><h3>Selecciona las casas</h3><small><span id="selected-count">0</span> seleccionadas</small></div>
+                    <div><button class="text-button" id="select-all" type="button">Seleccionar todas</button><button class="text-button" id="clear-all" type="button">Limpiar</button></div></div>
+                <input id="house-search" class="search" type="search" placeholder="Buscar casa o residente…">
+                <div class="house-grid">
+                    <label class="house-card" th:each="resident : ${residents}" th:data-search="|${resident.numCasa} ${resident.nombre}|">
+                        <input type="checkbox" name="casas" th:value="${resident.numCasa}">
+                        <span><b th:text="|Casa ${resident.numCasa}|">Casa 1</b><small th:text="${resident.nombre}">Residente</small></span>
+                    </label>
+                </div>
+                <div class="form-grid batch-details">
+                    <label>Monto por casa<input name="monto" type="number" min="0.01" step="0.01" value="800.00" required></label>
+                    <label>Forma de pago<select name="formaPago" required><option value="1">Transferencia</option><option value="2">Depósito</option><option value="3">Efectivo</option><option value="4">Otro</option></select></label>
+                    <label>Fecha de pago<input name="fechaPago" type="date" th:value="${today}" required></label>
+                    <label>Mes<input name="mes" type="number" min="1" max="12" th:value="${currentMonth}" required></label>
+                    <label>Año<input name="anio" type="number" min="2020" max="2100" th:value="${currentYear}" required></label>
+                    <label class="span-2">Observaciones<textarea name="observaciones" maxlength="500" rows="3">Pago de mantenimiento</textarea></label>
+                </div>
+                <button class="button primary" type="submit">Registrar pagos seleccionados</button>
+            </form>
+        </article>
+
+        <aside class="panel compact sticky">
+            <p class="eyebrow">Comprobantes</p><h2>Generación mensual</h2>
+            <p>Genera todos los PDF de residentes con pago registrado en el periodo.</p>
+            <form class="receipt-form" method="post" th:action="@{/web/payment-movements/monthly-receipts}">
+                <label>Mes<input name="mes" type="number" min="1" max="12" th:value="${currentMonth}" required></label>
+                <label>Año<input name="anio" type="number" min="2020" max="2100" th:value="${currentYear}" required></label>
+                <button class="button secondary full" type="submit">Generar PDF del mes</button>
+            </form>
+            <small>Los archivos se guardan en la carpeta <code>recibos/mes-año</code>.</small>
+        </aside>
+    </section>
+</main>
+</body>
+</html>

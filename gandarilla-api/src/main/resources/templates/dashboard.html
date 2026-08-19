@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard | Río Gandarilla</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" th:href="@{/web/dashboard}">
+        <img th:src="@{/img/logo.png}" alt="Río Gandarilla">
+        <span><strong>Río Gandarilla</strong><small>Administración de pagos</small></span>
+    </a>
+    <nav>
+        <a class="active" th:href="@{/web/dashboard}">Dashboard</a>
+        <a th:href="@{/web/payment-movements}">Movimientos</a>
+        <a th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
+    </nav>
+</header>
+
+<main class="page">
+    <section class="page-heading">
+        <div>
+            <p class="eyebrow">Resumen financiero</p>
+            <h1>Dashboard de mantenimiento</h1>
+            <p>Consulta pagos, casas pendientes y comprobantes del periodo.</p>
+        </div>
+        <form class="period-filter" method="get" th:action="@{/web/dashboard}">
+            <label>Mes
+                <select name="mes">
+                    <option th:each="month : ${#numbers.sequence(1,12)}" th:value="${month}"
+                            th:text="${month}" th:selected="${month == selectedMonth}"></option>
+                </select>
+            </label>
+            <label>Año
+                <input type="number" name="anio" min="2020" max="2100" th:value="${selectedYear}">
+            </label>
+            <button class="button primary" type="submit">Consultar</button>
+        </form>
+    </section>
+
+    <section class="metric-grid">
+        <article class="metric featured">
+            <span>Total recaudado</span>
+            <strong th:text="' $' + ${#numbers.formatDecimal(summary.totalRecaudado, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
+            <small th:text="|Periodo ${selectedMonth}/${selectedYear}|">Periodo</small>
+        </article>
+        <article class="metric">
+            <span>Casas pagadas</span>
+            <strong th:text="${summary.casasPagadas}">0</strong>
+            <small>de 50 casas</small>
+        </article>
+        <article class="metric warning">
+            <span>Casas pendientes</span>
+            <strong th:text="${summary.casasPendientes}">50</strong>
+            <small>sin movimiento registrado</small>
+        </article>
+        <article class="metric">
+            <span>Recibos enviados</span>
+            <strong th:text="${summary.comprobantesEnviados}">0</strong>
+            <small th:text="|${summary.comprobantesPendientes} pendientes|">0 pendientes</small>
+        </article>
+    </section>
+
+    <section class="content-grid">
+        <article class="panel wide">
+            <div class="panel-title">
+                <div><p class="eyebrow">Actividad</p><h2>Movimientos recientes</h2></div>
+                <a class="text-link" th:href="@{/web/payment-movements}">Registrar movimiento →</a>
+            </div>
+            <div class="table-scroll">
+                <table>
+                    <thead><tr><th>Folio</th><th>Casa</th><th>Residente</th><th>Fecha</th><th>Monto</th><th>Estado</th></tr></thead>
+                    <tbody>
+                    <tr th:each="movement : ${recent}">
+                        <td class="folio" th:text="${movement.folio}">GAN-...</td>
+                        <td th:text="${movement.numCasa}">1</td>
+                        <td th:text="${movement.residenteNombre}">Residente</td>
+                        <td th:text="${#temporals.format(movement.fechaPago, 'dd/MM/yyyy')}">01/01/2026</td>
+                        <td th:text="'$' + ${#numbers.formatDecimal(movement.monto, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                        <td><span class="status" th:classappend="${movement.estatus == 'CANCELADO'} ? ' cancelled' : ''"
+                                  th:text="${movement.estatus}">REGISTRADO</span></td>
+                    </tr>
+                    <tr th:if="${#lists.isEmpty(recent)}"><td colspan="6" class="empty">No hay movimientos en este periodo.</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+        <aside class="panel compact">
+            <p class="eyebrow">Control del periodo</p>
+            <h2>Estado de movimientos</h2>
+            <div class="progress-item"><span>Registrados <b th:text="${summary.movimientosRegistrados}">0</b></span></div>
+            <div class="progress-item"><span>Cancelados <b th:text="${summary.movimientosCancelados}">0</b></span></div>
+            <div class="progress-item"><span>WhatsApp pendientes <b th:text="${summary.comprobantesPendientes}">0</b></span></div>
+            <a class="button secondary full" th:href="@{/web/payment-movements}">Administrar pagos</a>
+        </aside>
+    </section>
+</main>
+</body>
+</html>

@@ -1,0 +1,9 @@
+target/
+.mvn-repo/
+.idea/
+.vscode/
+*.iml
+.env
+logs/
+generated-receipts/
+.DS_Store
