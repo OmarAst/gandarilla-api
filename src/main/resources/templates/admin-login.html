@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Acceso administrador | Río Gandarilla</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<main class="page login-page">
+    <section class="panel login-panel">
+        <div class="login-brand">
+            <img th:src="@{/img/logo.png}" alt="Río Gandarilla">
+            <span><strong>Río Gandarilla</strong><small>Gestión de pagos y recibos</small></span>
+        </div>
+        <p class="eyebrow">Área administrativa</p>
+        <h1>Acceso de administrador</h1>
+        <div th:if="${param.logout}" class="alert success">Sesión cerrada.</div>
+        <form class="login-form" method="post" th:action="@{/admin/login/process}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <label>Usuario<input type="text" name="username" autocomplete="username" required></label>
+            <label>Contraseña<input type="password" name="password" autocomplete="current-password" required></label>
+            <button class="button primary full" type="submit">Entrar al panel</button>
+        </form>
+        <div class="login-footer">
+            <span>Acceso protegido</span>
+            <a class="text-link" th:href="@{/web/dashboard}">Volver al dashboard público</a>
+        </div>
+    </section>
+</main>
+</body>
+</html>

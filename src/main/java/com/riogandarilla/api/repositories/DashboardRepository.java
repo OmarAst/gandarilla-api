@@ -1,6 +1,7 @@
 package com.riogandarilla.api.repositories;
 
 import com.riogandarilla.api.dto.response.DashboardSummary;
+import com.riogandarilla.api.configs.properties.AppProperties;
 import com.riogandarilla.api.entities.PaymentMovement;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
@@ -14,9 +15,11 @@ import java.util.List;
 public class DashboardRepository {
 
     private final JdbcTemplate jdbcTemplate;
+    private final AppProperties properties;
 
-    public DashboardRepository(JdbcTemplate jdbcTemplate) {
+    public DashboardRepository(JdbcTemplate jdbcTemplate, AppProperties properties) {
         this.jdbcTemplate = jdbcTemplate;
+        this.properties = properties;
     }
 
     public DashboardSummary summary(int month, int year) {
@@ -26,20 +29,23 @@ public class DashboardRepository {
                     COUNT(DISTINCT r.num_casa) FILTER (WHERE mp.estatus = 'REGISTRADO') AS casas_pagadas,
                     COUNT(*) FILTER (WHERE mp.estatus = 'REGISTRADO') AS registrados,
                     COUNT(*) FILTER (WHERE mp.estatus = 'CANCELADO') AS cancelados,
-                    COUNT(*) FILTER (WHERE mp.estatus = 'REGISTRADO' AND mp.whatsapp_enviado) AS enviados,
-                    COUNT(*) FILTER (WHERE mp.estatus = 'REGISTRADO' AND NOT mp.whatsapp_enviado) AS pendientes
+                    COALESCE((SELECT SUM(monto) FROM gastos_comite WHERE mes = ? AND anio = ? AND estatus = 'PAGADO'), 0) AS gastos_cubiertos,
+                    COALESCE((SELECT SUM(monto) FROM gastos_comite WHERE mes = ? AND anio = ? AND estatus = 'PENDIENTE'), 0) AS gastos_pendientes
                 FROM movimientos_pago mp
                 JOIN residentes r ON r.id = mp.id_residente
                 WHERE mp.mes = ? AND mp.anio = ?
                 """;
         return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
             int paid = rs.getInt("casas_pagadas");
+                var collected = rs.getBigDecimal("total_recaudado");
+                var coveredExpenses = rs.getBigDecimal("gastos_cubiertos");
             return new DashboardSummary(
-                    month, year, rs.getBigDecimal("total_recaudado"), paid,
-                    Math.max(0, 50 - paid), rs.getInt("registrados"),
-                    rs.getInt("cancelados"), rs.getInt("enviados"), rs.getInt("pendientes")
+                    month, year, collected, coveredExpenses,
+                    rs.getBigDecimal("gastos_pendientes"), collected.subtract(coveredExpenses),
+                    properties.monthlyFeeAmount().multiply(java.math.BigDecimal.valueOf(Math.max(0, 50 - paid))),
+                    paid, Math.max(0, 50 - paid), rs.getInt("registrados"), rs.getInt("cancelados")
             );
-        }, month, year);
+            }, month, year, month, year, month, year);
     }
 
     public List<PaymentMovement> recent(int month, int year) {

@@ -6,6 +6,7 @@ import com.riogandarilla.api.dto.response.DashboardSummary;
 import com.riogandarilla.api.dto.response.PaymentMovementResponse;
 import com.riogandarilla.api.entities.Resident;
 import com.riogandarilla.api.services.DashboardService;
+import com.riogandarilla.api.services.CommitteeExpenseService;
 import com.riogandarilla.api.services.PaymentMovementService;
 import com.riogandarilla.api.services.ReceiptService;
 import com.riogandarilla.api.services.ResidentService;
@@ -37,11 +38,16 @@ class WebControllersTest {
     void shouldPopulateDashboardForSelectedPeriod() {
         DashboardService service = mock(DashboardService.class);
         DashboardSummary summary = new DashboardSummary(
-                8, 2026, new BigDecimal("6400.00"), 8, 42, 8, 0, 3, 5
+            8, 2026, new BigDecimal("6400.00"), new BigDecimal("0.00"),
+            new BigDecimal("0.00"), new BigDecimal("6400.00"), new BigDecimal("33600.00"),
+            8, 42, 8, 0
         );
         when(service.summary(8, 2026)).thenReturn(summary);
         when(service.recent(8, 2026)).thenReturn(List.of());
-        DashboardWebController controller = new DashboardWebController(service, clock);
+        CommitteeExpenseService expenses = mock(CommitteeExpenseService.class);
+        when(expenses.findByPeriod(8, 2026)).thenReturn(List.of());
+        when(expenses.annualSummary(2026)).thenReturn(List.of());
+        DashboardWebController controller = new DashboardWebController(service, expenses, clock);
         ExtendedModelMap model = new ExtendedModelMap();
 
         String view = controller.dashboard(8, 2026, model);

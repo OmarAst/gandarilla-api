@@ -14,15 +14,18 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.core.annotation.Order;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.AuthenticationEntryPoint;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
+import org.springframework.security.web.util.matcher.AnyRequestMatcher;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
 import org.springframework.security.web.header.writers.StaticHeadersWriter;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.InMemoryUserDetailsManager;
-import org.springframework.security.web.authentication.www.BasicAuthenticationEntryPoint;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @Log4j2
 @Configuration
@@ -50,6 +53,25 @@ public class SecurityConfig {
     }
 
     @Bean
+    @Order(1)
+    public SecurityFilterChain apiTokenSecurityFilterChain(
+            HttpSecurity http,
+            AppProperties properties
+    ) throws Exception {
+        http.securityMatcher("/api/auth/token")
+                .csrf(AbstractHttpConfigurer::disable);
+        if (!properties.securityEnabled()) {
+            http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll());
+            return http.build();
+        }
+        validateSecurityProperties(properties);
+        http.httpBasic(Customizer.withDefaults())
+                .authorizeHttpRequests(auth -> auth.anyRequest().authenticated());
+        return http.build();
+    }
+
+    @Bean
+    @Order(2)
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             AppProperties properties,
@@ -59,9 +81,9 @@ public class SecurityConfig {
     ) throws Exception {
         http.csrf(AbstractHttpConfigurer::disable)
                 .cors(Customizer.withDefaults())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.IF_REQUIRED))
+                .csrf(csrf -> csrf.ignoringRequestMatchers("/api/**"))
                 .exceptionHandling(errors -> errors
-                        .authenticationEntryPoint(authenticationEntryPoint)
                         .accessDeniedHandler(accessDeniedHandler))
                 .headers(headers -> headers
                         .contentTypeOptions(Customizer.withDefaults())
@@ -78,31 +100,48 @@ public class SecurityConfig {
             return http.build();
         }
 
-        if (properties.apiBearerToken().isBlank()) {
-            throw new IllegalStateException("API_BEARER_TOKEN es obligatorio cuando SECURITY_ENABLED=true");
+        validateSecurityProperties(properties);
+        AuthenticationEntryPoint webEntryPoint = new LoginUrlAuthenticationEntryPoint("/admin/login");
+        http.formLogin(form -> form
+                        .loginPage("/admin/login")
+                        .loginProcessingUrl("/admin/login/process")
+                        .defaultSuccessUrl("/web/dashboard", true)
+                        .permitAll())
+                .addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(errors -> errors
+                        .defaultAuthenticationEntryPointFor(
+                                authenticationEntryPoint,
+                                new AntPathRequestMatcher("/api/**")
+                        )
+                        .defaultAuthenticationEntryPointFor(
+                                webEntryPoint,
+                                AnyRequestMatcher.INSTANCE
+                        ))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers(properties.publicPaths().toArray(new String[0])).permitAll()
+                        .requestMatchers("/", "/css/**", "/js/**", "/img/**").permitAll()
+                        .requestMatchers("/admin/login", "/admin/login/process", "/error").permitAll()
+                        .requestMatchers("/api/auth/token").hasRole("ADMIN")
+                        .requestMatchers("/api/**").hasRole("ADMIN")
+                        .requestMatchers("/web/dashboard").permitAll()
+                        .requestMatchers("/web/**").hasRole("ADMIN")
+                        .anyRequest().authenticated());
+        http.logout(logout -> logout
+                .logoutUrl("/web/logout")
+                .logoutSuccessUrl("/web/dashboard?logout")
+                .permitAll());
+
+        return http.build();
+    }
+
+    private void validateSecurityProperties(AppProperties properties) {
+        if (properties.apiBearerSecret().length() < 32) {
+            throw new IllegalStateException(
+                    "API_BEARER_SECRET debe tener al menos 32 caracteres cuando SECURITY_ENABLED=true"
+            );
         }
         if (properties.webPassword().isBlank()) {
             throw new IllegalStateException("WEB_PASSWORD es obligatorio cuando SECURITY_ENABLED=true");
         }
-
-        BasicAuthenticationEntryPoint webEntryPoint = new BasicAuthenticationEntryPoint();
-        webEntryPoint.setRealmName("Gandarilla Web");
-        webEntryPoint.afterPropertiesSet();
-
-        http.httpBasic(Customizer.withDefaults())
-                .exceptionHandling(errors -> errors
-                        .defaultAuthenticationEntryPointFor(
-                                webEntryPoint,
-                                new AntPathRequestMatcher("/web/**")
-                        ))
-                .addFilterBefore(tokenFilter, UsernamePasswordAuthenticationFilter.class)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(properties.publicPaths().toArray(new String[0])).permitAll()
-                        .requestMatchers("/", "/css/**", "/js/**", "/img/**").permitAll()
-                        .requestMatchers("/api/**").hasRole("ADMIN")
-                        .requestMatchers("/web/**").hasRole("ADMIN")
-                        .anyRequest().authenticated());
-
-        return http.build();
     }
 }

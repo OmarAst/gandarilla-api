@@ -2,6 +2,7 @@ package com.riogandarilla.api.configs.properties;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
 
@@ -10,6 +11,7 @@ public record AppProperties(
         Cors cors,
         Security security,
         Web web,
+        MonthlyFee monthlyFee,
         RateLimit rateLimit,
         OpenApi openapi,
         Receipt receipt,
@@ -35,15 +37,27 @@ public record AppProperties(
                 : security.apiBearerToken().trim();
     }
 
+    public String apiBearerSecret() {
+        return security == null || security.apiBearerSecret() == null
+                ? ""
+                : security.apiBearerSecret().trim();
+    }
+
+    public Duration apiBearerExpiration() {
+        if (security == null || security.apiBearerExpiration() == null
+                || security.apiBearerExpiration().isZero()
+                || security.apiBearerExpiration().isNegative()) {
+            return Duration.ofHours(1);
+        }
+        return security.apiBearerExpiration();
+    }
+
     public List<String> publicPaths() {
         if (security == null || security.publicPaths() == null || security.publicPaths().isEmpty()) {
             return List.of(
                     "/api/health",
                     "/actuator/health",
-                    "/actuator/info",
-                    "/swagger-ui/**",
-                    "/swagger-ui.html",
-                    "/v3/api-docs/**"
+                        "/actuator/info"
             );
         }
         return security.publicPaths();
@@ -55,6 +69,12 @@ public record AppProperties(
 
     public String webPassword() {
         return web == null || web.password() == null ? "" : web.password();
+    }
+
+    public BigDecimal monthlyFeeAmount() {
+        return monthlyFee == null || monthlyFee.amount() == null || monthlyFee.amount().signum() < 0
+                ? new BigDecimal("800.00")
+                : monthlyFee.amount();
     }
 
     public boolean rateLimitEnabled() {
@@ -198,10 +218,19 @@ public record AppProperties(
     public record Cors(List<String> allowedOrigins) {
     }
 
-    public record Security(Boolean enabled, String apiBearerToken, List<String> publicPaths) {
+        public record Security(
+            Boolean enabled,
+            String apiBearerToken,
+            String apiBearerSecret,
+            Duration apiBearerExpiration,
+            List<String> publicPaths
+        ) {
     }
 
     public record Web(String username, String password) {
+    }
+
+    public record MonthlyFee(BigDecimal amount) {
     }
 
     public record RateLimit(

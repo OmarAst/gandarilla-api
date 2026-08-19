@@ -78,9 +78,16 @@ Está construido con Spring MVC y Thymeleaf dentro del mismo JAR. El dashboard
 permite filtrar métricas por mes y año; la pantalla de movimientos ofrece alta
 individual, alta masiva y generación mensual de comprobantes.
 
-Cuando `SECURITY_ENABLED=true`, la API conserva el Bearer Token y el frontend
-usa autenticación HTTP Basic con `WEB_USERNAME` y `WEB_PASSWORD`. No utilices
-la contraseña de ejemplo en producción.
+Cuando `SECURITY_ENABLED=true`, la API utiliza Bearer Tokens JWT con duración
+de una hora por defecto. El dashboard es público y el área administrativa usa
+login en `/admin/login` con `WEB_USERNAME` y `WEB_PASSWORD`.
+
+Configura las tres variables cuando habilites la seguridad. No utilices
+contraseñas de ejemplo en producción.
+
+Configura también una clave aleatoria de al menos 32 caracteres para firmar los
+tokens. El administrador obtiene un token nuevo mediante `POST /api/auth/token`
+usando HTTP Basic; el token se envía después como `Authorization: Bearer <token>`.
 
 El archivo `.env.example` sirve como referencia, pero Spring Boot no carga archivos `.env` automáticamente.
 
@@ -218,7 +225,9 @@ Para proteger `/api/**`:
 
 ```powershell
 $env:SECURITY_ENABLED="true"
-$env:API_BEARER_TOKEN="TOKEN_LARGO_Y_ALEATORIO"
+$env:API_BEARER_SECRET="CLAVE_SECRETA_DE_AL_MENOS_32_CARACTERES"
+$env:WEB_USERNAME="admin"
+$env:WEB_PASSWORD="CONTRASEÑA_ADMIN"
 ```
 
 Después envía:

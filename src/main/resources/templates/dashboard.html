@@ -14,8 +14,15 @@
     </a>
     <nav>
         <a class="active" th:href="@{/web/dashboard}">Dashboard</a>
-        <a th:href="@{/web/payment-movements}">Movimientos</a>
-        <a th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
+        <a th:unless="${isAdmin}" th:href="@{/admin/login}">Login administrador</a>
+        <a th:if="${isAdmin}" th:href="@{/web/payment-movements}">Movimientos</a>
+        <a th:if="${isAdmin}" th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
+        <span class="auth-status" th:if="${isAdmin}">Administrador: <strong th:text="${adminUsername}">admin</strong></span>
+        <span class="auth-status" th:unless="${isAdmin}">Visitante</span>
+        <form th:if="${isAdmin}" class="logout-form" method="post" th:action="@{/web/logout}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button class="text-button" type="submit">Salir</button>
+        </form>
     </nav>
 </header>
 
@@ -29,8 +36,10 @@
         <form class="period-filter" method="get" th:action="@{/web/dashboard}">
             <label>Mes
                 <select name="mes">
-                    <option th:each="month : ${#numbers.sequence(1,12)}" th:value="${month}"
-                            th:text="${month}" th:selected="${month == selectedMonth}"></option>
+                    <option th:each="monthName, monthStat : ${monthNames}"
+                            th:value="${monthStat.index + 1}"
+                            th:text="${monthName}"
+                            th:selected="${monthStat.index + 1 == selectedMonth}"></option>
                 </select>
             </label>
             <label>Año
@@ -44,30 +53,88 @@
         <article class="metric featured">
             <span>Total recaudado</span>
             <strong th:text="' $' + ${#numbers.formatDecimal(summary.totalRecaudado, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
-            <small th:text="|Periodo ${selectedMonth}/${selectedYear}|">Periodo</small>
+            <small th:text="|Periodo ${selectedMonthName} ${selectedYear}|">Periodo</small>
         </article>
         <article class="metric">
-            <span>Casas pagadas</span>
-            <strong th:text="${summary.casasPagadas}">0</strong>
-            <small>de 50 casas</small>
+            <span>Gastos cubiertos</span>
+            <strong th:text="'$' + ${#numbers.formatDecimal(summary.gastosCubiertos, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
+            <small>pagados en el periodo</small>
         </article>
         <article class="metric warning">
-            <span>Casas pendientes</span>
-            <strong th:text="${summary.casasPendientes}">50</strong>
-            <small>sin movimiento registrado</small>
+            <span>Gastos pendientes</span>
+            <strong th:text="'$' + ${#numbers.formatDecimal(summary.gastosPendientes, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
+            <small>por cubrir</small>
         </article>
         <article class="metric">
-            <span>Recibos enviados</span>
-            <strong th:text="${summary.comprobantesEnviados}">0</strong>
-            <small th:text="|${summary.comprobantesPendientes} pendientes|">0 pendientes</small>
+            <span>Disponible comité</span>
+            <strong th:text="'$' + ${#numbers.formatDecimal(summary.disponibleComiteActual, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
+            <small>recaudado menos gastos pagados</small>
         </article>
+    </section>
+
+    <section class="dashboard-visuals">
+        <article class="panel chart-panel">
+            <div class="panel-title">
+                <div><p class="eyebrow">Flujo del periodo</p><h2>Ingresos y gastos</h2></div>
+                <span class="chart-caption" th:text="${selectedMonthName} + ' ' + ${selectedYear}">Agosto 2026</span>
+            </div>
+            <div class="bar-chart">
+                <div class="bar-column">
+                    <span class="bar-value" th:text="'$' + ${#numbers.formatDecimal(summary.totalRecaudado, 1, 'COMMA', 0, 'POINT')}">$0</span>
+                    <div class="bar income" th:style="|height: ${summary.totalRecaudado.signum() == 0 ? 4 : 100}%;|"></div>
+                    <span class="bar-label">Recaudado</span>
+                </div>
+                <div class="bar-column">
+                    <span class="bar-value" th:text="'$' + ${#numbers.formatDecimal(summary.gastosCubiertos, 1, 'COMMA', 0, 'POINT')}">$0</span>
+                    <div class="bar covered" th:style="|height: ${summary.gastosCubiertos.signum() == 0 ? 4 : 100}%;|"></div>
+                    <span class="bar-label">Cubierto</span>
+                </div>
+                <div class="bar-column">
+                    <span class="bar-value" th:text="'$' + ${#numbers.formatDecimal(summary.gastosPendientes, 1, 'COMMA', 0, 'POINT')}">$0</span>
+                    <div class="bar pending" th:style="|height: ${summary.gastosPendientes.signum() == 0 ? 4 : 100}%;|"></div>
+                    <span class="bar-label">Pendiente</span>
+                </div>
+            </div>
+            <div class="chart-legend"><span><i class="income-dot"></i>Ingresos</span><span><i class="covered-dot"></i>Gastos pagados</span><span><i class="pending-dot"></i>Gastos pendientes</span></div>
+        </article>
+        <article class="panel chart-panel">
+            <div class="panel-title">
+                <div><p class="eyebrow">Cobranza</p><h2>Casas del periodo</h2></div>
+            </div>
+            <div class="progress-chart">
+                <div class="progress-track"><span class="progress-paid" th:style="|width: ${summary.casasPagadas * 2}%;|"></span></div>
+                <div class="progress-labels"><span>Pagadas <strong th:text="${summary.casasPagadas}">0</strong></span><span>Pendientes <strong th:text="${summary.casasPendientes}">0</strong></span></div>
+            </div>
+            <div class="collection-note">Pendiente por cobrar <strong th:text="'$' + ${#numbers.formatDecimal(summary.pendientePorCobrar, 1, 'COMMA', 2, 'POINT')}">$0.00</strong></div>
+        </article>
+    </section>
+
+    <section class="panel annual-expense-panel">
+        <div class="panel-title">
+            <div><p class="eyebrow">Resumen anual</p><h2>Gastos globales <span th:text="${selectedYear}">2026</span></h2></div>
+            <span class="chart-caption">Todos los meses</span>
+        </div>
+        <div class="table-scroll">
+            <table class="annual-expense-table">
+                <thead><tr><th>Mes</th><th>Gastos cubiertos</th><th>Gastos pendientes</th><th>Balance de gastos</th></tr></thead>
+                <tbody>
+                <tr th:each="monthExpense, monthStat : ${annualExpenses}">
+                    <td class="month-name" th:text="${monthNames[monthExpense.month - 1]}">Enero</td>
+                    <td th:text="'$' + ${#numbers.formatDecimal(monthExpense.covered, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                    <td th:text="'$' + ${#numbers.formatDecimal(monthExpense.pending, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                    <td class="balance-cell" th:text="'$' + ${#numbers.formatDecimal(monthExpense.balance(), 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(annualExpenses)}"><td colspan="4" class="empty">No hay datos de gastos para este año.</td></tr>
+                </tbody>
+            </table>
+        </div>
     </section>
 
     <section class="content-grid">
         <article class="panel wide">
             <div class="panel-title">
                 <div><p class="eyebrow">Actividad</p><h2>Movimientos recientes</h2></div>
-                <a class="text-link" th:href="@{/web/payment-movements}">Registrar movimiento →</a>
+                <a th:if="${isAdmin}" class="text-link" th:href="@{/web/payment-movements}">Registrar movimiento →</a>
             </div>
             <div class="table-scroll">
                 <table>
@@ -90,11 +157,33 @@
         <aside class="panel compact">
             <p class="eyebrow">Control del periodo</p>
             <h2>Estado de movimientos</h2>
-            <div class="progress-item"><span>Registrados <b th:text="${summary.movimientosRegistrados}">0</b></span></div>
-            <div class="progress-item"><span>Cancelados <b th:text="${summary.movimientosCancelados}">0</b></span></div>
-            <div class="progress-item"><span>WhatsApp pendientes <b th:text="${summary.comprobantesPendientes}">0</b></span></div>
-            <a class="button secondary full" th:href="@{/web/payment-movements}">Administrar pagos</a>
+            <div class="progress-item"><span>Casas pagadas <b th:text="${summary.casasPagadas}">0</b></span></div>
+            <div class="progress-item"><span>Casas pendientes <b th:text="${summary.casasPendientes}">0</b></span></div>
+            <div class="progress-item"><span>Pendiente por cobrar <b th:text="'$' + ${#numbers.formatDecimal(summary.pendientePorCobrar, 1, 'COMMA', 2, 'POINT')}">$0.00</b></span></div>
+            <a th:if="${isAdmin}" class="button secondary full" th:href="@{/web/payment-movements}">Administrar pagos</a>
         </aside>
+    </section>
+
+    <section class="panel expense-list-panel">
+        <div class="panel-title">
+            <div><p class="eyebrow">Control financiero</p><h2>Gastos del periodo</h2></div>
+            <a th:if="${isAdmin}" class="text-link" th:href="@{/web/payment-movements}">Registrar gasto →</a>
+        </div>
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Concepto</th><th>Proveedor</th><th>Fecha</th><th>Monto</th><th>Estatus</th></tr></thead>
+                <tbody>
+                <tr th:each="expense : ${expenses}">
+                    <td th:text="${expense.concepto}">Mantenimiento</td>
+                    <td th:text="${expense.proveedor ?: 'Sin proveedor'}">Proveedor</td>
+                    <td th:text="${#temporals.format(expense.fechaGasto, 'dd/MM/yyyy')}">01/01/2026</td>
+                    <td th:text="'$' + ${#numbers.formatDecimal(expense.monto, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                    <td><span class="status" th:classappend="${expense.estatus == 'PENDIENTE'} ? ' pending-status' : ''" th:text="${expense.estatus}">PAGADO</span></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(expenses)}"><td colspan="5" class="empty">No hay gastos registrados en este periodo.</td></tr>
+                </tbody>
+            </table>
+        </div>
     </section>
 </main>
 </body>

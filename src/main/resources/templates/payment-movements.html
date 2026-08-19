@@ -17,6 +17,11 @@
         <a th:href="@{/web/dashboard}">Dashboard</a>
         <a class="active" th:href="@{/web/payment-movements}">Movimientos</a>
         <a th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
+        <span class="auth-status">Administrador: <strong th:text="${adminUsername}">admin</strong></span>
+        <form class="logout-form" method="post" th:action="@{/web/logout}">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+            <button class="text-button" type="submit">Salir</button>
+        </form>
     </nav>
 </header>
 
@@ -37,6 +42,7 @@
             </div>
 
             <form id="single" class="payment-form tab-content active" method="post" th:action="@{/web/payment-movements/single}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <div class="form-grid">
                     <label>Casa<select name="casa" required><option value="">Selecciona una casa</option>
                         <option th:each="resident : ${residents}" th:value="${resident.numCasa}"
@@ -52,6 +58,7 @@
             </form>
 
             <form id="batch" class="payment-form tab-content" method="post" th:action="@{/web/payment-movements/batch}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <div class="selector-heading"><div><h3>Selecciona las casas</h3><small><span id="selected-count">0</span> seleccionadas</small></div>
                     <div><button class="text-button" id="select-all" type="button">Seleccionar todas</button><button class="text-button" id="clear-all" type="button">Limpiar</button></div></div>
                 <input id="house-search" class="search" type="search" placeholder="Buscar casa o residente…">
@@ -73,16 +80,33 @@
             </form>
         </article>
 
+        <div class="side-stack">
+        <aside class="panel compact sticky">
+            <p class="eyebrow">Control financiero</p><h2>Registrar gasto</h2>
+            <form class="receipt-form" method="post" th:action="@{/web/payment-movements/expense}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <label>Concepto<input name="concepto" maxlength="150" required placeholder="Mantenimiento de alberca"></label>
+                <label>Proveedor<input name="proveedor" maxlength="150" placeholder="Nombre del proveedor"></label>
+                <label>Monto<input name="monto" type="number" min="0.01" step="0.01" required></label>
+                <label>Fecha<input name="fechaGasto" type="date" th:value="${today}" required></label>
+                <label>Mes<input name="mes" type="number" min="1" max="12" th:value="${currentMonth}" required></label>
+                <label>Año<input name="anio" type="number" min="2020" max="2100" th:value="${currentYear}" required></label>
+                <label>Estatus<select name="estatus"><option value="PAGADO">Pagado</option><option value="PENDIENTE">Pendiente</option></select></label>
+                <button class="button secondary full" type="submit">Guardar gasto</button>
+            </form>
+        </aside>
         <aside class="panel compact sticky">
             <p class="eyebrow">Comprobantes</p><h2>Generación mensual</h2>
             <p>Genera todos los PDF de residentes con pago registrado en el periodo.</p>
             <form class="receipt-form" method="post" th:action="@{/web/payment-movements/monthly-receipts}">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
                 <label>Mes<input name="mes" type="number" min="1" max="12" th:value="${currentMonth}" required></label>
                 <label>Año<input name="anio" type="number" min="2020" max="2100" th:value="${currentYear}" required></label>
                 <button class="button secondary full" type="submit">Generar PDF del mes</button>
             </form>
             <small>Los archivos se guardan en la carpeta <code>recibos/mes-año</code>.</small>
         </aside>
+        </div>
     </section>
 </main>
 </body>

@@ -12,7 +12,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-import org.springframework.web.servlet.HandlerMapping;
 
 import java.io.IOException;
 import java.util.List;
@@ -41,6 +40,9 @@ public class BearerTokenAuthenticationFilter extends OncePerRequestFilter {
         }
         String path = request.getRequestURI();
         if (!path.startsWith("/api/")) {
+            return true;
+        }
+        if ("/api/auth/token".equals(path)) {
             return true;
         }
         return properties.publicPaths().stream().anyMatch(pattern -> matches(pattern, path));
