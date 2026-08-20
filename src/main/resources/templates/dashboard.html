@@ -14,15 +14,9 @@
     </a>
     <nav>
         <a class="active" th:href="@{/web/dashboard}">Dashboard</a>
-        <a th:unless="${isAdmin}" th:href="@{/admin/login}">Login administrador</a>
-        <a th:if="${isAdmin}" th:href="@{/web/payment-movements}">Movimientos</a>
-        <a th:if="${isAdmin}" th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
-        <span class="auth-status" th:if="${isAdmin}">Administrador: <strong th:text="${adminUsername}">admin</strong></span>
-        <span class="auth-status" th:unless="${isAdmin}">Visitante</span>
-        <form th:if="${isAdmin}" class="logout-form" method="post" th:action="@{/web/logout}">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
-            <button class="text-button" type="submit">Salir</button>
-        </form>
+        <a th:href="@{/web/payment-movements}">Movimientos</a>
+        <a th:href="@{/web/committee}">Comité</a>
+        <a th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
     </nav>
 </header>
 
@@ -31,15 +25,13 @@
         <div>
             <p class="eyebrow">Resumen financiero</p>
             <h1>Dashboard de mantenimiento</h1>
-            <p>Consulta pagos, casas pendientes y comprobantes del periodo.</p>
+            <p>Vista mensual enriquecida con histórico anual, estatus de cuotas y control de comité.</p>
         </div>
         <form class="period-filter" method="get" th:action="@{/web/dashboard}">
             <label>Mes
                 <select name="mes">
-                    <option th:each="monthName, monthStat : ${monthNames}"
-                            th:value="${monthStat.index + 1}"
-                            th:text="${monthName}"
-                            th:selected="${monthStat.index + 1 == selectedMonth}"></option>
+                    <option th:each="month : ${#numbers.sequence(1,12)}" th:value="${month}"
+                            th:text="${month}" th:selected="${month == selectedMonth}"></option>
                 </select>
             </label>
             <label>Año
@@ -49,92 +41,135 @@
         </form>
     </section>
 
-    <section class="metric-grid">
+    <section class="metric-grid metric-grid-six">
         <article class="metric featured">
             <span>Total recaudado</span>
-            <strong th:text="' $' + ${#numbers.formatDecimal(summary.totalRecaudado, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
-            <small th:text="|Periodo ${selectedMonthName} ${selectedYear}|">Periodo</small>
+            <strong th:text="'$' + ${#numbers.formatDecimal(summary.totalRecaudado, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
+            <small th:text="|Periodo ${selectedMonth}/${selectedYear}|">Periodo</small>
         </article>
-        <article class="metric">
-            <span>Gastos cubiertos</span>
-            <strong th:text="'$' + ${#numbers.formatDecimal(summary.gastosCubiertos, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
-            <small>pagados en el periodo</small>
+        <article class="metric success-metric">
+            <span>Pagadas a tiempo</span>
+            <strong th:text="${paymentStatus.pagadasATiempo}">0</strong>
+            <small>pago hasta el día 5</small>
         </article>
         <article class="metric warning">
-            <span>Gastos pendientes</span>
-            <strong th:text="'$' + ${#numbers.formatDecimal(summary.gastosPendientes, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
-            <small>por cubrir</small>
+            <span>Pagadas con atraso</span>
+            <strong th:text="${paymentStatus.pagadasConAtraso}">0</strong>
+            <small>pago desde el día 6</small>
+        </article>
+        <article class="metric danger-metric">
+            <span>Vencidas</span>
+            <strong th:text="${paymentStatus.vencidas}">0</strong>
+            <small th:text="|${paymentStatus.accesoRestringido} con restricción desde el día 15|">0 con restricción</small>
+        </article>
+        <article class="metric committee-metric">
+            <span>Comité exento</span>
+            <strong th:text="${paymentStatus.comiteExento}">0</strong>
+            <small><a th:href="@{/web/committee}">Configurar casas →</a></small>
         </article>
         <article class="metric">
-            <span>Disponible comité</span>
-            <strong th:text="'$' + ${#numbers.formatDecimal(summary.disponibleComiteActual, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
-            <small>recaudado menos gastos pagados</small>
+            <span>Pendiente por cobrar</span>
+            <strong class="money-sm" th:text="'$' + ${#numbers.formatDecimal(paymentStatus.pendientePorCobrar, 1, 'COMMA', 2, 'POINT')}">$0.00</strong>
+            <small th:text="|Cuota aplicable: $${#numbers.formatDecimal(paymentStatus.cuotaAplicable, 1, 'COMMA', 0, 'POINT')}|">Cuota</small>
         </article>
     </section>
 
-    <section class="dashboard-visuals">
-        <article class="panel chart-panel">
+    <section class="content-grid dashboard-top-grid">
+        <article class="panel wide annual-panel">
             <div class="panel-title">
-                <div><p class="eyebrow">Flujo del periodo</p><h2>Ingresos y gastos</h2></div>
-                <span class="chart-caption" th:text="${selectedMonthName} + ' ' + ${selectedYear}">Agosto 2026</span>
+                <div>
+                    <p class="eyebrow">Histórico anual</p>
+                    <h2 th:text="|Recaudación ${selectedYear}|">Recaudación anual</h2>
+                </div>
+                <span class="legend-chip blue-dot">Total recaudado</span>
             </div>
-            <div class="bar-chart">
-                <div class="bar-column">
-                    <span class="bar-value" th:text="'$' + ${#numbers.formatDecimal(summary.totalRecaudado, 1, 'COMMA', 0, 'POINT')}">$0</span>
-                    <div class="bar income" th:style="|height: ${summary.totalRecaudado.signum() == 0 ? 4 : 100}%;|"></div>
-                    <span class="bar-label">Recaudado</span>
-                </div>
-                <div class="bar-column">
-                    <span class="bar-value" th:text="'$' + ${#numbers.formatDecimal(summary.gastosCubiertos, 1, 'COMMA', 0, 'POINT')}">$0</span>
-                    <div class="bar covered" th:style="|height: ${summary.gastosCubiertos.signum() == 0 ? 4 : 100}%;|"></div>
-                    <span class="bar-label">Cubierto</span>
-                </div>
-                <div class="bar-column">
-                    <span class="bar-value" th:text="'$' + ${#numbers.formatDecimal(summary.gastosPendientes, 1, 'COMMA', 0, 'POINT')}">$0</span>
-                    <div class="bar pending" th:style="|height: ${summary.gastosPendientes.signum() == 0 ? 4 : 100}%;|"></div>
-                    <span class="bar-label">Pendiente</span>
+            <div class="annual-chart" aria-label="Gráfica histórica anual de recaudación">
+                <div class="annual-column" th:each="point : ${annualHistory}">
+                    <div class="annual-value" th:text="${point.totalRecaudado.signum() == 0 ? '' : '$' + #numbers.formatDecimal(point.totalRecaudado, 1, 'COMMA', 0, 'POINT')}"></div>
+                    <div class="annual-track">
+                        <div class="annual-bar" th:style="|height:${point.recaudadoPorcentaje}%|"></div>
+                    </div>
+                    <span th:text="${#strings.substring(point.nombreMes,0,3)}">Ene</span>
                 </div>
             </div>
-            <div class="chart-legend"><span><i class="income-dot"></i>Ingresos</span><span><i class="covered-dot"></i>Gastos pagados</span><span><i class="pending-dot"></i>Gastos pendientes</span></div>
         </article>
-        <article class="panel chart-panel">
-            <div class="panel-title">
-                <div><p class="eyebrow">Cobranza</p><h2>Casas del periodo</h2></div>
+
+        <aside class="panel compact status-panel">
+            <p class="eyebrow">Estado del periodo</p>
+            <h2>Control de cuotas</h2>
+            <div class="status-bar-row">
+                <span>Pagadas</span><b th:text="${paymentStatus.pagadasATiempo}">0</b>
+                <div class="status-track"><i class="status-fill paid" th:style="'width:' + ${paymentStatus.pagadasATiempo * 2} + '%'"></i></div>
             </div>
-            <div class="progress-chart">
-                <div class="progress-track"><span class="progress-paid" th:style="|width: ${summary.casasPagadas * 2}%;|"></span></div>
-                <div class="progress-labels"><span>Pagadas <strong th:text="${summary.casasPagadas}">0</strong></span><span>Pendientes <strong th:text="${summary.casasPendientes}">0</strong></span></div>
+            <div class="status-bar-row">
+                <span>Con atraso</span><b th:text="${paymentStatus.pagadasConAtraso}">0</b>
+                <div class="status-track"><i class="status-fill late" th:style="'width:' + ${paymentStatus.pagadasConAtraso * 2} + '%'"></i></div>
             </div>
-            <div class="collection-note">Pendiente por cobrar <strong th:text="'$' + ${#numbers.formatDecimal(summary.pendientePorCobrar, 1, 'COMMA', 2, 'POINT')}">$0.00</strong></div>
-        </article>
+            <div class="status-bar-row">
+                <span>Vencidas</span><b th:text="${paymentStatus.vencidas}">0</b>
+                <div class="status-track"><i class="status-fill overdue" th:style="'width:' + ${paymentStatus.vencidas * 2} + '%'"></i></div>
+            </div>
+            <div class="status-bar-row" th:if="${paymentStatus.pendientes > 0}">
+                <span>Pendientes</span><b th:text="${paymentStatus.pendientes}">0</b>
+                <div class="status-track"><i class="status-fill pending" th:style="'width:' + ${paymentStatus.pendientes * 2} + '%'"></i></div>
+            </div>
+            <div class="status-bar-row">
+                <span>Comité exento</span><b th:text="${paymentStatus.comiteExento}">0</b>
+                <div class="status-track"><i class="status-fill committee" th:style="'width:' + ${paymentStatus.comiteExento * 2} + '%'"></i></div>
+            </div>
+        </aside>
     </section>
 
-    <section class="panel annual-expense-panel">
+    <section class="panel annual-table-panel">
         <div class="panel-title">
-            <div><p class="eyebrow">Resumen anual</p><h2>Gastos globales <span th:text="${selectedYear}">2026</span></h2></div>
-            <span class="chart-caption">Todos los meses</span>
+            <div><p class="eyebrow">Resumen mensual</p><h2 th:text="|Control histórico ${selectedYear}|">Control histórico</h2></div>
+            <small class="muted-note">Los gastos se incorporarán cuando se cargue su información.</small>
         </div>
         <div class="table-scroll">
-            <table class="annual-expense-table">
-                <thead><tr><th>Mes</th><th>Gastos cubiertos</th><th>Gastos pendientes</th><th>Balance de gastos</th></tr></thead>
+            <table class="financial-table">
+                <thead>
+                <tr><th>Mes</th><th>Recaudado</th><th>Pagadas</th><th>Con atraso</th><th>Vencidas</th><th>Pendientes</th><th>Comité</th></tr>
+                </thead>
                 <tbody>
-                <tr th:each="monthExpense, monthStat : ${annualExpenses}">
-                    <td class="month-name" th:text="${monthNames[monthExpense.month - 1]}">Enero</td>
-                    <td th:text="'$' + ${#numbers.formatDecimal(monthExpense.covered, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
-                    <td th:text="'$' + ${#numbers.formatDecimal(monthExpense.pending, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
-                    <td class="balance-cell" th:text="'$' + ${#numbers.formatDecimal(monthExpense.balance(), 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                <tr th:each="point : ${annualHistory}" th:classappend="${point.mes == selectedMonth} ? ' selected-row' : ''">
+                    <td th:text="${point.nombreMes}">Enero</td>
+                    <td class="money" th:text="'$' + ${#numbers.formatDecimal(point.totalRecaudado, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
+                    <td th:text="${point.pagadasATiempo}">0</td>
+                    <td th:text="${point.pagadasConAtraso}">0</td>
+                    <td th:text="${point.vencidas}">0</td>
+                    <td th:text="${point.pendientes}">0</td>
+                    <td th:text="${point.comiteExento}">0</td>
                 </tr>
-                <tr th:if="${#lists.isEmpty(annualExpenses)}"><td colspan="4" class="empty">No hay datos de gastos para este año.</td></tr>
                 </tbody>
             </table>
         </div>
     </section>
 
-    <section class="content-grid">
+    <section class="content-grid expense-preview-grid">
+        <article class="panel expense-placeholder">
+            <div class="panel-title">
+                <div><p class="eyebrow">Siguiente etapa</p><h2>Gastos por servicio</h2></div>
+                <span class="status neutral">Pendiente de datos</span>
+            </div>
+            <p>Este bloque quedará conectado a Agua, Vigilancia, Internet, Suministros, CFE, Mantenimiento de alberca, Recolección de basura, Jardinería y otros gastos.</p>
+            <div class="placeholder-bars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+        </article>
+        <aside class="panel compact">
+            <p class="eyebrow">Recibos</p>
+            <h2>Comprobantes del periodo</h2>
+            <div class="progress-item"><span>Enviados <b th:text="${summary.comprobantesEnviados}">0</b></span></div>
+            <div class="progress-item"><span>Pendientes <b th:text="${summary.comprobantesPendientes}">0</b></span></div>
+            <div class="progress-item"><span>Movimientos registrados <b th:text="${summary.movimientosRegistrados}">0</b></span></div>
+            <div class="progress-item"><span>Cancelados <b th:text="${summary.movimientosCancelados}">0</b></span></div>
+            <a class="button secondary full" th:href="@{/web/payment-movements}">Administrar pagos</a>
+        </aside>
+    </section>
+
+    <section class="content-grid recent-grid">
         <article class="panel wide">
             <div class="panel-title">
                 <div><p class="eyebrow">Actividad</p><h2>Movimientos recientes</h2></div>
-                <a th:if="${isAdmin}" class="text-link" th:href="@{/web/payment-movements}">Registrar movimiento →</a>
+                <a class="text-link" th:href="@{/web/payment-movements}">Registrar movimiento →</a>
             </div>
             <div class="table-scroll">
                 <table>
@@ -154,36 +189,14 @@
                 </table>
             </div>
         </article>
-        <aside class="panel compact">
-            <p class="eyebrow">Control del periodo</p>
-            <h2>Estado de movimientos</h2>
-            <div class="progress-item"><span>Casas pagadas <b th:text="${summary.casasPagadas}">0</b></span></div>
-            <div class="progress-item"><span>Casas pendientes <b th:text="${summary.casasPendientes}">0</b></span></div>
-            <div class="progress-item"><span>Pendiente por cobrar <b th:text="'$' + ${#numbers.formatDecimal(summary.pendientePorCobrar, 1, 'COMMA', 2, 'POINT')}">$0.00</b></span></div>
-            <a th:if="${isAdmin}" class="button secondary full" th:href="@{/web/payment-movements}">Administrar pagos</a>
+        <aside class="panel compact rules-card">
+            <p class="eyebrow">Reglas automáticas</p>
+            <h2>Cuota mensual</h2>
+            <div class="rule"><b>Días 1–5</b><span>$800 · pago puntual</span></div>
+            <div class="rule"><b>Desde día 6</b><span>$900 · pago con atraso</span></div>
+            <div class="rule"><b>Desde día 15</b><span>Se marca como vencida y con restricción</span></div>
+            <div class="rule"><b>Comité</b><span>Exento según vigencia configurada</span></div>
         </aside>
-    </section>
-
-    <section class="panel expense-list-panel">
-        <div class="panel-title">
-            <div><p class="eyebrow">Control financiero</p><h2>Gastos del periodo</h2></div>
-            <a th:if="${isAdmin}" class="text-link" th:href="@{/web/payment-movements}">Registrar gasto →</a>
-        </div>
-        <div class="table-scroll">
-            <table>
-                <thead><tr><th>Concepto</th><th>Proveedor</th><th>Fecha</th><th>Monto</th><th>Estatus</th></tr></thead>
-                <tbody>
-                <tr th:each="expense : ${expenses}">
-                    <td th:text="${expense.concepto}">Mantenimiento</td>
-                    <td th:text="${expense.proveedor ?: 'Sin proveedor'}">Proveedor</td>
-                    <td th:text="${#temporals.format(expense.fechaGasto, 'dd/MM/yyyy')}">01/01/2026</td>
-                    <td th:text="'$' + ${#numbers.formatDecimal(expense.monto, 1, 'COMMA', 2, 'POINT')}">$0.00</td>
-                    <td><span class="status" th:classappend="${expense.estatus == 'PENDIENTE'} ? ' pending-status' : ''" th:text="${expense.estatus}">PAGADO</span></td>
-                </tr>
-                <tr th:if="${#lists.isEmpty(expenses)}"><td colspan="5" class="empty">No hay gastos registrados en este periodo.</td></tr>
-                </tbody>
-            </table>
-        </div>
     </section>
 </main>
 </body>

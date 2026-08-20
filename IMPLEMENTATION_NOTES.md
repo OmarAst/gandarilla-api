@@ -9,3 +9,11 @@
 - Las formas de pago se validan como valores 1 a 4 sin tabla de catálogo.
 - Los envíos reales actualizan `whatsapp_enviado`, `fecha_envio_whatsapp` y `whatsapp_message_id`.
 - Los envíos simulados no alteran el estado de WhatsApp en la base.
+
+## Dashboard financiero enriquecido (2026-08-19)
+- El dashboard continúa siendo mensual (mes/año).
+- Se agregó histórico anual enero-diciembre sin eliminar movimientos ni comprobantes.
+- Reglas: pago puntual días 1-5; atraso desde día 6; vencido/restricción desde día 15.
+- Se agregó configuración histórica de casas de comité desde `/web/committee`.
+- El comité actual puede configurarse con vigencia desde junio de 2026 y cambiarse en el futuro sin alterar meses anteriores.
+- Los gastos por servicio quedan como bloque preparado/pendiente hasta recibir la información de gastos.

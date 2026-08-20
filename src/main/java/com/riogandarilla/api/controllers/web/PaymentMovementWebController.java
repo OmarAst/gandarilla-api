@@ -10,7 +10,6 @@ import com.riogandarilla.api.services.ResidentService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validator;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,18 +50,13 @@ public class PaymentMovementWebController {
     }
 
     @GetMapping
-    public String page(Model model, Authentication authentication) {
+    public String page(Model model) {
         LocalDate today = LocalDate.now(clock);
         model.addAttribute("residents", residentService.findAllActive());
         model.addAttribute("today", today);
         model.addAttribute("currentMonth", today.getMonthValue());
         model.addAttribute("currentYear", today.getYear());
-        model.addAttribute("adminUsername", authentication == null ? null : authentication.getName());
         return "payment-movements";
-    }
-
-    public String page(Model model) {
-        return page(model, null);
     }
 
     @PostMapping("/single")

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Comité | Río Gandarilla</title>
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<header class="topbar">
+    <a class="brand" th:href="@{/web/dashboard}">
+        <img th:src="@{/img/logo.png}" alt="Río Gandarilla">
+        <span><strong>Río Gandarilla</strong><small>Administración de pagos</small></span>
+    </a>
+    <nav>
+        <a th:href="@{/web/dashboard}">Dashboard</a>
+        <a th:href="@{/web/payment-movements}">Movimientos</a>
+        <a class="active" th:href="@{/web/committee}">Comité</a>
+        <a th:href="@{/swagger-ui.html}" target="_blank" rel="noopener">API</a>
+    </nav>
+</header>
+
+<main class="page">
+    <section class="page-heading simple">
+        <div>
+            <p class="eyebrow">Configuración</p>
+            <h1>Casas de comité</h1>
+            <p>Marca las casas exentas y define desde qué mes inicia la vigencia. El historial anterior se conserva.</p>
+        </div>
+    </section>
+
+    <div class="alert success" th:if="${success}" th:text="${success}"></div>
+
+    <section class="content-grid committee-layout">
+        <article class="panel wide">
+            <div class="panel-title">
+                <div><p class="eyebrow">Comité actual</p><h2>Seleccionar casas exentas</h2></div>
+            </div>
+            <form method="post" th:action="@{/web/committee}" class="committee-form">
+                <label class="committee-date">Vigencia desde
+                    <input type="date" name="inicio" th:value="${startDate}" required>
+                </label>
+                <p class="form-help">Al guardar se reemplaza la composición del comité a partir del mes indicado, sin alterar periodos anteriores.</p>
+                <div class="house-grid committee-house-grid">
+                    <label class="house-card" th:each="resident : ${residents}">
+                        <input type="checkbox" name="casas" th:value="${resident.numCasa}"
+                               th:checked="${committeeHouses.contains(resident.numCasa)}">
+                        <span>
+                            <b th:text="|Casa ${resident.numCasa}|">Casa 1</b>
+                            <small th:text="${resident.nombre}">Residente</small>
+                        </span>
+                    </label>
+                </div>
+                <button class="button primary" type="submit">Guardar configuración</button>
+            </form>
+        </article>
+
+        <aside class="panel compact committee-help">
+            <p class="eyebrow">Cómo funciona</p>
+            <h2>Historial protegido</h2>
+            <p>Una casa marcada como comité se excluye del cálculo de cuotas pendientes únicamente durante su vigencia.</p>
+            <div class="rule"><b>Inicio actual</b><span>Junio de 2026</span></div>
+            <div class="rule"><b>Cambio futuro</b><span>Selecciona un nuevo mes y las nuevas casas.</span></div>
+            <div class="rule"><b>Dashboard</b><span>El estatus “Comité exento” se calcula automáticamente.</span></div>
+        </aside>
+    </section>
+
+    <section class="panel committee-history">
+        <div class="panel-title"><div><p class="eyebrow">Auditoría</p><h2>Historial de comité</h2></div></div>
+        <div class="table-scroll">
+            <table>
+                <thead><tr><th>Casa</th><th>Desde</th><th>Hasta</th><th>Estado</th></tr></thead>
+                <tbody>
+                <tr th:each="item : ${history}">
+                    <td th:text="|Casa ${item.numCasa}|">Casa 1</td>
+                    <td th:text="${#temporals.format(item.fechaInicio, 'dd/MM/yyyy')}">01/06/2026</td>
+                    <td th:text="${item.fechaFin == null ? 'Actual' : #temporals.format(item.fechaFin, 'dd/MM/yyyy')}">Actual</td>
+                    <td><span class="status" th:classappend="${item.fechaFin != null} ? ' neutral' : ''"
+                              th:text="${item.fechaFin == null ? 'VIGENTE' : 'CERRADO'}">VIGENTE</span></td>
+                </tr>
+                <tr th:if="${#lists.isEmpty(history)}"><td colspan="4" class="empty">Aún no hay casas configuradas como comité.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+</main>
+</body>
+</html>

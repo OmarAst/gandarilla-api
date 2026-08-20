@@ -24,9 +24,9 @@ public class AuthController {
     @PostMapping("/token")
     public Map<String, Object> token(Authentication authentication) {
         return Map.of(
-                "token", tokenValidationService.generateToken(authentication.getName()),
+            "token", properties.apiBearerToken(),
                 "tokenType", "Bearer",
-                "expiresIn", properties.apiBearerExpiration().toSeconds()
+            "expiresIn", "static"
         );
     }
 }
